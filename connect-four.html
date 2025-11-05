@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forza Quattro - Gioco per Due Giocatori</title>
+    <link rel="stylesheet" href="connect-four.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Forza Quattro</h1>
+
+        <div class="game-info">
+            <div id="current-player" class="player-display">
+                Turno del Giocatore <span id="player-color">1</span> (Rosso)
+            </div>
+            <button id="reset-button">Nuova Partita</button>
+        </div>
+
+        <div id="game-board"></div>
+
+        <div id="message" class="message hidden"></div>
+
+        <div class="instructions">
+            <h3>Come giocare:</h3>
+            <ul>
+                <li>Clicca su una colonna per far cadere il tuo disco</li>
+                <li>Il primo giocatore che allinea 4 dischi (orizzontalmente, verticalmente o diagonalmente) vince!</li>
+                <li>Giocatore 1 (Rosso) vs Giocatore 2 (Giallo)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="connect-four.js"></script>
+</body>
+</html>

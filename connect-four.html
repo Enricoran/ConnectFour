@@ -10,6 +10,15 @@
     <div class="container">
         <h1>Forza Quattro</h1>
 
+        <div class="mode-selector">
+            <button id="mode-pvp" class="mode-button active">Giocatore vs Giocatore</button>
+            <button id="mode-ai" class="mode-button">Giocatore vs Computer</button>
+        </div>
+
+        <div id="level-display" class="level-display hidden">
+            Livello Computer: <span id="ai-level">1</span>
+        </div>
+
         <div class="game-info">
             <div id="current-player" class="player-display">
                 Turno del Giocatore <span id="player-color">1</span> (Rosso)

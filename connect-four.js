@@ -11,6 +11,8 @@ let gameActive = true;
 let moves = 0;
 let isAnimating = false;
 let isMuted = true;
+let isAIMode = false;
+let aiLevel = 1;
 
 // Elementi DOM
 const gameBoard = document.getElementById('game-board');
@@ -18,6 +20,10 @@ const currentPlayerDisplay = document.getElementById('player-color');
 const resetButton = document.getElementById('reset-button');
 const messageDiv = document.getElementById('message');
 const audioButton = document.getElementById('audio-button');
+const modePvPButton = document.getElementById('mode-pvp');
+const modeAIButton = document.getElementById('mode-ai');
+const levelDisplay = document.getElementById('level-display');
+const aiLevelSpan = document.getElementById('ai-level');
 
 // Audio Context per generare il suono
 let audioContext = null;
@@ -71,6 +77,347 @@ function toggleAudio() {
     }
 }
 
+// Imposta la modalità Giocatore vs Giocatore
+function setModePvP() {
+    isAIMode = false;
+    modePvPButton.classList.add('active');
+    modeAIButton.classList.remove('active');
+    levelDisplay.classList.add('hidden');
+    initGame();
+}
+
+// Imposta la modalità Giocatore vs Computer
+function setModeAI() {
+    isAIMode = true;
+    aiLevel = 1; // Riparte sempre dal livello 1
+    modePvPButton.classList.remove('active');
+    modeAIButton.classList.add('active');
+    levelDisplay.classList.remove('hidden');
+    updateLevelDisplay();
+    initGame();
+}
+
+// Aggiorna il display del livello
+function updateLevelDisplay() {
+    aiLevelSpan.textContent = aiLevel;
+}
+
+// ========== AI DEL COMPUTER ==========
+
+// Ottieni tutte le colonne valide (non piene)
+function getValidColumns() {
+    const validCols = [];
+    for (let col = 0; col < COLS; col++) {
+        if (getLowestEmptyRow(col) !== -1) {
+            validCols.push(col);
+        }
+    }
+    return validCols;
+}
+
+// Verifica se una mossa porta alla vittoria
+function isWinningMove(row, col, player) {
+    // Salva lo stato attuale
+    const originalValue = board[row][col];
+    board[row][col] = player;
+
+    const directions = [
+        { dr: 0, dc: 1 },  // Orizzontale
+        { dr: 1, dc: 0 },  // Verticale
+        { dr: 1, dc: 1 },  // Diagonale \
+        { dr: 1, dc: -1 }  // Diagonale /
+    ];
+
+    let isWin = false;
+    for (const { dr, dc } of directions) {
+        let count = 1;
+        // Controlla in una direzione
+        count += countDirectionForAI(row, col, dr, dc, player);
+        // Controlla nella direzione opposta
+        count += countDirectionForAI(row, col, -dr, -dc, player);
+
+        if (count >= 4) {
+            isWin = true;
+            break;
+        }
+    }
+
+    // Ripristina lo stato originale
+    board[row][col] = originalValue;
+    return isWin;
+}
+
+// Conta i dischi consecutivi in una direzione (per AI)
+function countDirectionForAI(row, col, dr, dc, player) {
+    let count = 0;
+    let r = row + dr;
+    let c = col + dc;
+
+    while (
+        r >= 0 && r < ROWS &&
+        c >= 0 && c < COLS &&
+        board[r][c] === player
+    ) {
+        count++;
+        r += dr;
+        c += dc;
+    }
+
+    return count;
+}
+
+// Livello 1: Mosse casuali
+function aiLevel1() {
+    const validCols = getValidColumns();
+    return validCols[Math.floor(Math.random() * validCols.length)];
+}
+
+// Livello 2: Blocca vittorie immediate + mosse casuali
+function aiLevel2() {
+    const validCols = getValidColumns();
+
+    // Prima, cerca di bloccare una vittoria immediata dell'avversario
+    for (const col of validCols) {
+        const row = getLowestEmptyRow(col);
+        if (isWinningMove(row, col, PLAYER1)) {
+            return col;
+        }
+    }
+
+    // Altrimenti mossa casuale
+    return validCols[Math.floor(Math.random() * validCols.length)];
+}
+
+// Livello 3: Vinci se possibile, altrimenti blocca, altrimenti casuale
+function aiLevel3() {
+    const validCols = getValidColumns();
+
+    // Prima, cerca una mossa vincente
+    for (const col of validCols) {
+        const row = getLowestEmptyRow(col);
+        if (isWinningMove(row, col, PLAYER2)) {
+            return col;
+        }
+    }
+
+    // Poi, blocca una vittoria immediata dell'avversario
+    for (const col of validCols) {
+        const row = getLowestEmptyRow(col);
+        if (isWinningMove(row, col, PLAYER1)) {
+            return col;
+        }
+    }
+
+    // Altrimenti preferisci colonne centrali
+    const centerCol = Math.floor(COLS / 2);
+    if (validCols.includes(centerCol)) {
+        return centerCol;
+    }
+
+    // Altrimenti mossa casuale
+    return validCols[Math.floor(Math.random() * validCols.length)];
+}
+
+// Valuta la posizione del tabellone per l'AI
+function evaluateBoard() {
+    let score = 0;
+
+    // Valuta le righe
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col <= COLS - 4; col++) {
+            const window = [board[row][col], board[row][col+1], board[row][col+2], board[row][col+3]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    // Valuta le colonne
+    for (let col = 0; col < COLS; col++) {
+        for (let row = 0; row <= ROWS - 4; row++) {
+            const window = [board[row][col], board[row+1][col], board[row+2][col], board[row+3][col]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    // Valuta le diagonali positive
+    for (let row = 0; row <= ROWS - 4; row++) {
+        for (let col = 0; col <= COLS - 4; col++) {
+            const window = [board[row][col], board[row+1][col+1], board[row+2][col+2], board[row+3][col+3]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    // Valuta le diagonali negative
+    for (let row = 3; row < ROWS; row++) {
+        for (let col = 0; col <= COLS - 4; col++) {
+            const window = [board[row][col], board[row-1][col+1], board[row-2][col+2], board[row-3][col+3]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    return score;
+}
+
+// Valuta una finestra di 4 celle
+function evaluateWindow(window) {
+    let score = 0;
+    const aiCount = window.filter(cell => cell === PLAYER2).length;
+    const playerCount = window.filter(cell => cell === PLAYER1).length;
+    const emptyCount = window.filter(cell => cell === null).length;
+
+    // Punteggio per AI (giallo)
+    if (aiCount === 4) score += 100;
+    else if (aiCount === 3 && emptyCount === 1) score += 5;
+    else if (aiCount === 2 && emptyCount === 2) score += 2;
+
+    // Penalità per giocatore (rosso)
+    if (playerCount === 3 && emptyCount === 1) score -= 4;
+
+    return score;
+}
+
+// Verifica se il tabellone è pieno
+function isBoardFull() {
+    return moves >= ROWS * COLS;
+}
+
+// Verifica se c'è una vittoria sul tabellone
+function checkBoardWin(player) {
+    const directions = [
+        { dr: 0, dc: 1 },  // Orizzontale
+        { dr: 1, dc: 0 },  // Verticale
+        { dr: 1, dc: 1 },  // Diagonale \
+        { dr: 1, dc: -1 }  // Diagonale /
+    ];
+
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+            if (board[row][col] === player) {
+                for (const { dr, dc } of directions) {
+                    let count = 1;
+                    let r = row + dr;
+                    let c = col + dc;
+
+                    while (
+                        r >= 0 && r < ROWS &&
+                        c >= 0 && c < COLS &&
+                        board[r][c] === player
+                    ) {
+                        count++;
+                        r += dr;
+                        c += dc;
+                    }
+
+                    if (count >= 4) return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Algoritmo minimax con alpha-beta pruning
+function minimax(depth, alpha, beta, maximizingPlayer) {
+    const validCols = getValidColumns();
+
+    // Condizioni terminali
+    if (checkBoardWin(PLAYER2)) return [null, 100000];
+    if (checkBoardWin(PLAYER1)) return [null, -100000];
+    if (validCols.length === 0) return [null, 0];
+    if (depth === 0) return [null, evaluateBoard()];
+
+    if (maximizingPlayer) {
+        let value = -Infinity;
+        let column = validCols[Math.floor(Math.random() * validCols.length)];
+
+        for (const col of validCols) {
+            const row = getLowestEmptyRow(col);
+            board[row][col] = PLAYER2;
+            moves++;
+
+            const newScore = minimax(depth - 1, alpha, beta, false)[1];
+
+            board[row][col] = null;
+            moves--;
+
+            if (newScore > value) {
+                value = newScore;
+                column = col;
+            }
+
+            alpha = Math.max(alpha, value);
+            if (alpha >= beta) break;
+        }
+
+        return [column, value];
+    } else {
+        let value = Infinity;
+        let column = validCols[Math.floor(Math.random() * validCols.length)];
+
+        for (const col of validCols) {
+            const row = getLowestEmptyRow(col);
+            board[row][col] = PLAYER1;
+            moves++;
+
+            const newScore = minimax(depth - 1, alpha, beta, true)[1];
+
+            board[row][col] = null;
+            moves--;
+
+            if (newScore < value) {
+                value = newScore;
+                column = col;
+            }
+
+            beta = Math.min(beta, value);
+            if (alpha >= beta) break;
+        }
+
+        return [column, value];
+    }
+}
+
+// Livello 4: Minimax con profondità 3
+function aiLevel4() {
+    const [col] = minimax(3, -Infinity, Infinity, true);
+    return col;
+}
+
+// Livello 5: Minimax con profondità 5
+function aiLevel5() {
+    const [col] = minimax(5, -Infinity, Infinity, true);
+    return col;
+}
+
+// Esegue la mossa dell'AI in base al livello
+function makeAIMove() {
+    let col;
+
+    switch (aiLevel) {
+        case 1:
+            col = aiLevel1();
+            break;
+        case 2:
+            col = aiLevel2();
+            break;
+        case 3:
+            col = aiLevel3();
+            break;
+        case 4:
+            col = aiLevel4();
+            break;
+        case 5:
+            col = aiLevel5();
+            break;
+        default:
+            col = aiLevel1();
+    }
+
+    // Esegui la mossa con un piccolo delay per renderla più naturale
+    setTimeout(() => {
+        handleCellClick(col);
+    }, 500);
+}
+
 // Inizializzazione del gioco
 function initGame() {
     // Crea la griglia vuota
@@ -120,8 +467,32 @@ function handleCellClick(col) {
     // Controlla vittoria
     if (checkWin(row, col)) {
         gameActive = false;
-        const winner = currentPlayer === PLAYER1 ? '1 (Rosso)' : '2 (Giallo)';
-        showMessage(`Giocatore ${winner} ha vinto!`, 'win');
+
+        if (isAIMode) {
+            if (currentPlayer === PLAYER1) {
+                // Il giocatore ha vinto
+                showMessage(`Hai vinto! Livello ${aiLevel} superato!`, 'win');
+
+                // Aumenta il livello se non è già al massimo
+                if (aiLevel < 5) {
+                    aiLevel++;
+                    updateLevelDisplay();
+                    setTimeout(() => {
+                        showMessage(`Prossimo livello: ${aiLevel}`, 'info');
+                    }, 2000);
+                } else {
+                    setTimeout(() => {
+                        showMessage(`Complimenti! Hai battuto tutti i livelli!`, 'win');
+                    }, 2000);
+                }
+            } else {
+                // L'AI ha vinto
+                showMessage(`Il Computer ha vinto! Riprova...`, 'lose');
+            }
+        } else {
+            const winner = currentPlayer === PLAYER1 ? '1 (Rosso)' : '2 (Giallo)';
+            showMessage(`Giocatore ${winner} ha vinto!`, 'win');
+        }
         return;
     }
 
@@ -135,6 +506,11 @@ function handleCellClick(col) {
     // Cambia giocatore
     currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
     updatePlayerDisplay();
+
+    // Se è la modalità AI ed è il turno del computer, fai giocare l'AI
+    if (isAIMode && currentPlayer === PLAYER2 && gameActive) {
+        makeAIMove();
+    }
 }
 
 // Trova la riga più bassa disponibile in una colonna
@@ -184,13 +560,23 @@ function updatePlayerDisplay() {
     if (currentPlayer === PLAYER1) {
         currentPlayerDisplay.textContent = '1';
         currentPlayerDisplay.style.color = '#e74c3c';
-        document.getElementById('current-player').innerHTML =
-            'Turno del Giocatore <span id="player-color" style="color: #e74c3c;">1</span> (Rosso)';
+        if (isAIMode) {
+            document.getElementById('current-player').innerHTML =
+                'Turno del <span id="player-color" style="color: #e74c3c;">Giocatore</span> (Rosso)';
+        } else {
+            document.getElementById('current-player').innerHTML =
+                'Turno del Giocatore <span id="player-color" style="color: #e74c3c;">1</span> (Rosso)';
+        }
     } else {
         currentPlayerDisplay.textContent = '2';
         currentPlayerDisplay.style.color = '#f39c12';
-        document.getElementById('current-player').innerHTML =
-            'Turno del Giocatore <span id="player-color" style="color: #f39c12;">2</span> (Giallo)';
+        if (isAIMode) {
+            document.getElementById('current-player').innerHTML =
+                'Turno del <span id="player-color" style="color: #f39c12;">Computer</span> (Giallo)';
+        } else {
+            document.getElementById('current-player').innerHTML =
+                'Turno del Giocatore <span id="player-color" style="color: #f39c12;">2</span> (Giallo)';
+        }
     }
 }
 
@@ -261,10 +647,14 @@ function showMessage(text, type) {
         messageDiv.style.background = '#2ecc71';
     } else if (type === 'draw') {
         messageDiv.style.background = '#95a5a6';
+    } else if (type === 'lose') {
+        messageDiv.style.background = '#e74c3c';
+    } else if (type === 'info') {
+        messageDiv.style.background = '#3498db';
     }
 
-    // Nascondi il messaggio dopo 3 secondi per i warning
-    if (type === 'warning') {
+    // Nascondi il messaggio dopo 3 secondi per i warning e info
+    if (type === 'warning' || type === 'info') {
         setTimeout(hideMessage, 3000);
     }
 }
@@ -277,6 +667,8 @@ function hideMessage() {
 // Event listeners
 resetButton.addEventListener('click', initGame);
 audioButton.addEventListener('click', toggleAudio);
+modePvPButton.addEventListener('click', setModePvP);
+modeAIButton.addEventListener('click', setModeAI);
 
 // Avvia il gioco
 initGame();

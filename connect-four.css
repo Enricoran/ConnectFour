@@ -30,6 +30,57 @@ h1 {
     font-size: 2.5em;
 }
 
+.mode-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.mode-button {
+    background: #ecf0f1;
+    color: #333;
+    border: 2px solid #bdc3c7;
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mode-button:hover {
+    background: #d5dbdb;
+    transform: scale(1.02);
+}
+
+.mode-button.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.level-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.level-display.hidden {
+    display: none;
+}
+
+.level-display #ai-level {
+    font-size: 1.3em;
+    color: #ffd93d;
+}
+
 .game-info {
     display: flex;
     justify-content: space-between;

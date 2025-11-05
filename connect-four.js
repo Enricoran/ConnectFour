@@ -9,6 +9,7 @@ let board = [];
 let currentPlayer = PLAYER1;
 let gameActive = true;
 let moves = 0;
+let isAnimating = false;
 
 // Elementi DOM
 const gameBoard = document.getElementById('game-board');
@@ -23,6 +24,7 @@ function initGame() {
     currentPlayer = PLAYER1;
     gameActive = true;
     moves = 0;
+    isAnimating = false;
 
     // Pulisce e crea il tabellone
     gameBoard.innerHTML = '';
@@ -45,7 +47,7 @@ function initGame() {
 
 // Gestione del click su una colonna
 function handleCellClick(col) {
-    if (!gameActive) return;
+    if (!gameActive || isAnimating) return;
 
     // Trova la prima riga disponibile dal basso
     const row = getLowestEmptyRow(col);
@@ -91,11 +93,33 @@ function getLowestEmptyRow(col) {
     return -1;
 }
 
-// Aggiorna la visualizzazione di una cella
+// Aggiorna la visualizzazione di una cella con animazione di caduta
 function updateCell(row, col, player) {
     const cells = document.querySelectorAll('.cell');
     const index = row * COLS + col;
-    cells[index].classList.add(player);
+    const cell = cells[index];
+
+    // Blocca i click durante l'animazione
+    isAnimating = true;
+
+    // Calcola la distanza di caduta (dalla riga 0 alla riga target)
+    // Ogni cella ha un'altezza approssimativa, calcoliamo la distanza in pixel
+    const cellSize = cell.offsetHeight + 10; // altezza cella + gap
+    const fallDistance = -(row * cellSize + cellSize * 2); // distanza dalla cima
+
+    // Imposta la variabile CSS per la distanza di caduta
+    cell.style.setProperty('--fall-distance', `${fallDistance}px`);
+
+    // Aggiungi prima il colore e poi l'animazione
+    cell.classList.add(player);
+    cell.classList.add('falling');
+
+    // Rimuovi la classe falling quando l'animazione finisce
+    cell.addEventListener('animationend', function onAnimationEnd() {
+        cell.classList.remove('falling');
+        cell.removeEventListener('animationend', onAnimationEnd);
+        isAnimating = false;
+    }, { once: true });
 }
 
 // Aggiorna il display del giocatore corrente

@@ -10,12 +10,66 @@ let currentPlayer = PLAYER1;
 let gameActive = true;
 let moves = 0;
 let isAnimating = false;
+let isMuted = true;
 
 // Elementi DOM
 const gameBoard = document.getElementById('game-board');
 const currentPlayerDisplay = document.getElementById('player-color');
 const resetButton = document.getElementById('reset-button');
 const messageDiv = document.getElementById('message');
+const audioButton = document.getElementById('audio-button');
+
+// Audio Context per generare il suono
+let audioContext = null;
+
+// Inizializza l'AudioContext (viene creato al primo click per policy del browser)
+function initAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+// Genera il suono di caduta della pedina
+function playDropSound() {
+    if (isMuted || !audioContext) return;
+
+    const now = audioContext.currentTime;
+
+    // Crea un oscillatore per il suono
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Suono di impatto: frequenza che scende rapidamente
+    oscillator.frequency.setValueAtTime(300, now);
+    oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+
+    // Volume che diminuisce
+    gainNode.gain.setValueAtTime(0.3, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+    oscillator.type = 'triangle';
+    oscillator.start(now);
+    oscillator.stop(now + 0.15);
+}
+
+// Toggle mute/unmute
+function toggleAudio() {
+    initAudioContext();
+    isMuted = !isMuted;
+
+    if (isMuted) {
+        audioButton.textContent = '🔇';
+        audioButton.classList.remove('unmuted');
+    } else {
+        audioButton.textContent = '🔊';
+        audioButton.classList.add('unmuted');
+        // Riproduci un suono di test quando si attiva l'audio
+        playDropSound();
+    }
+}
 
 // Inizializzazione del gioco
 function initGame() {
@@ -114,11 +168,14 @@ function updateCell(row, col, player) {
     cell.classList.add(player);
     cell.classList.add('falling');
 
-    // Rimuovi la classe falling quando l'animazione finisce
+    // Rimuovi la classe falling quando l'animazione finisce e riproduci il suono
     cell.addEventListener('animationend', function onAnimationEnd() {
         cell.classList.remove('falling');
         cell.removeEventListener('animationend', onAnimationEnd);
         isAnimating = false;
+
+        // Riproduci il suono di caduta quando la pedina raggiunge la destinazione
+        playDropSound();
     }, { once: true });
 }
 
@@ -219,6 +276,7 @@ function hideMessage() {
 
 // Event listeners
 resetButton.addEventListener('click', initGame);
+audioButton.addEventListener('click', toggleAudio);
 
 // Avvia il gioco
 initGame();

@@ -71,6 +71,37 @@ h1 {
     transform: scale(0.95);
 }
 
+#audio-button {
+    background: #95a5a6;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#audio-button:hover {
+    background: #7f8c8d;
+    transform: scale(1.05);
+}
+
+#audio-button:active {
+    transform: scale(0.95);
+}
+
+#audio-button.unmuted {
+    background: #3498db;
+}
+
+#audio-button.unmuted:hover {
+    background: #2980b9;
+}
+
 #game-board {
     background: #2c3e50;
     border-radius: 15px;
@@ -140,7 +171,7 @@ h1 {
 }
 
 .cell.falling {
-    animation: fall 0.6s cubic-bezier(0.32, 0.88, 0.42, 1.35);
+    animation: fall 0.3s ease-in;
 }
 
 .message {
